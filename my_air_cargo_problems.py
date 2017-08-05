@@ -15,7 +15,6 @@ from functools import lru_cache
 class AirCargoProblem(Problem):
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
         """
-
         :param cargos: list of str
             cargos in the problem
         :param planes: list of str
@@ -60,20 +59,17 @@ class AirCargoProblem(Problem):
             :return: list of Action objects
             """
             loads = []
-
-            for ap in self.airports:
-                for cr in self.cargos:
-                    for p in self.planes:
-                        precond_pos = [expr("At({}, {})".format(p, ap)),
-                                       expr("At({}, {})".format(cr, ap)),
-                                       ]
-                        precond_neg = []
-                        effect_add = [expr("In({}, {})".format(cr, p))]
-                        effect_rem = [expr("At({}, {})".format(cr, ap))]
-                        load = Action(expr("Load({}, {}, {})".format(cr, p ,ap)),
-                                            [precond_pos, precond_neg],
-                                            [effect_add, effect_rem])
-                        loads.append(load)
+            for c, p, a in [(c, p, a) for c in self.cargos for p in self.planes for a in self.airports]:
+                precond_pos = [expr("At({}, {})".format(p, a)),
+                               expr("At({}, {})".format(c, a)),
+                               ]
+                precond_neg = []
+                effect_add = [expr("In({}, {})".format(c, p))]
+                effect_rem = [expr("At({}, {})".format(c, a))]
+                load = Action(expr("Load({}, {}, {})".format(c, p ,a)),
+                                    [precond_pos, precond_neg],
+                                    [effect_add, effect_rem])
+                loads.append(load)
             return loads
 
         def unload_actions():
@@ -82,19 +78,17 @@ class AirCargoProblem(Problem):
             :return: list of Action objects
             """
             unloads = []
-            for ap in self.airports:
-                for cr in self.cargos:
-                    for p in self.planes:
-                        precond_pos = [expr("In({}, {})".format(cr, p)),
-                                       expr("At({}, {})".format(p, ap)),
-                                       ]
-                        precond_neg = []
-                        effect_add = [expr("At({}, {})".format(cr, ap))]
-                        effect_rem = [expr("In({}, {})".format(cr, p))]
-                        unload = Action(expr("Unload({}, {}, {})".format(cr, p ,ap)),
-                                            [precond_pos, precond_neg],
-                                            [effect_add, effect_rem])
-                        unloads.append(unload)
+            for c, p, a in [(c, p, a) for c in self.cargos for p in self.planes for a in self.airports]:
+                precond_pos = [expr("In({}, {})".format(c, p)),
+                               expr("At({}, {})".format(p, a)),
+                               ]
+                precond_neg = []
+                effect_add = [expr("At({}, {})".format(c, a))]
+                effect_rem = [expr("In({}, {})".format(c, p))]
+                unload = Action(expr("Unload({}, {}, {})".format(c, p ,a)),
+                                    [precond_pos, precond_neg],
+                                    [effect_add, effect_rem])
+                unloads.append(unload)
             return unloads
 
         def fly_actions():
@@ -132,14 +126,14 @@ class AirCargoProblem(Problem):
         kb = PropKB()
         kb.tell(decode_state(state, self.state_map).pos_sentence())
         for action in self.actions_list:
-            valid = True
+            is_possible = True
             for clause in action.precond_pos:
-                if action not in kb.clauses:
-                    valid = False
+                if clause not in kb.clauses:
+                    is_possible = False
             for clause in action.precond_neg:
-                if action in kb.clauses:
-                    valid = False
-            if valid:
+                if clause in kb.clauses:
+                    is_possible = False
+            if is_possible:
                 possible_actions.append(action)
         return possible_actions
 
@@ -206,26 +200,20 @@ class AirCargoProblem(Problem):
         executed.
         """
         count = 0
-
         goal = self.goal #list of goal fluents
+        state_fluents = decode_state(node.state, self.state_map)
+        fluents_left = set(goal) - set(state_fluents.pos) 
         #we relax the actions by removing all preconditions and all effects
             #except those that are literals in the goal
-        for action in node.s:
-            
+        for action in self.actions_list:
+            if action.effect_add[0] in fluents_left:#if effect matches goal
+                fluents_left = set(fluents_left) - set(action.effect_add)
+                count += 1
+            if not fluents_left:
+                return count              
         #we count the minimum number of actions
             #required such that the union of those actions’ effects satisfies the goal
-        
-        
-        curr_miss = Problem.goal - # conditions already in state
-        for action in self.actions_list:#iterate over all possible actions
-            for clause in action.effect_add:
-                if clause is in curr miss: #if effect matches goal
-                    count += 1
-                    curr_miss -= #remove effect
-                    
-        # if actions's effect is in goal 
-        # add to counter
-        return count #goal hadn't been reached
+        return None
 
 
 def air_cargo_p1() -> AirCargoProblem:
