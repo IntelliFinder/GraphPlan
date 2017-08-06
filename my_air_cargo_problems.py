@@ -10,6 +10,7 @@ from lp_utils import (
 from my_planning_graph import PlanningGraph
 
 from functools import lru_cache
+from itertools import chain
 
 
 class AirCargoProblem(Problem):
@@ -291,33 +292,8 @@ def air_cargo_p3() -> AirCargoProblem:
            expr('At(P1, SFO)'),
            expr('At(P2, JFK)'),
          ]
-    neg = [expr('At(C1, JFK)'),
-           expr('At(C1, ATL)'),
-           expr('At(C1, ORD)'),
-           expr('At(C2, SFO)'),
-           expr('At(C2, ATL)'),
-           expr('At(C2, ORD)'),
-           expr('At(C3, JFK)'),
-           expr('At(C3, ORD)'),
-           expr('At(C3, SFO)'),
-           expr('At(C4, JFK)'),
-           expr('At(C4, ATL)'),
-           expr('At(C4, SFO)'),
-           expr('At(P1, JFK)'),
-           expr('At(P1, ORD)'),
-           expr('At(P1, ATL)'),
-           expr('At(P2, SFO)'),
-           expr('At(P2, ATL)'),
-           expr('At(P2, ORD)'),
-           expr('In(C1, P1)'),
-           expr('In(C1, P2)'),
-           expr('In(C2, P1)'),
-           expr('In(C2, P2)'),
-           expr('In(C3, P1)'),
-           expr('In(C3, P2)'),
-           expr('In(C4, P1)'),
-           expr('In(C4, P2)'),
-         ]
+    neg = set(list(chain.from_iterable(  (expr("In({}, {})".format(c, p)), expr("At({}, {})".format(c, a)), expr("At({], {}))".format(p, a))) for c in self.cargos for p in self.planes for a in self.airports ))).discard(pos)
+    #neg= set([(expr("In({}, {})".format(c, p)), expr("At({}, {})".format(c, a)), expr("At({], {}))".format(p, a))) for c in self.cargos for p in self.planes for a in self.airports]).discard(pos)
     init = FluentState(pos, neg)
     goal = [expr('At(C1, JFK)'),
             expr('At(C3, JFK)'),

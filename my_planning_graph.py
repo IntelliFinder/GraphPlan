@@ -304,7 +304,6 @@ class PlanningGraph():
         :return:
             adds A nodes to the current level in self.a_levels[level]
         """
-        # TODO add action A level to the planning graph as described in the Russell-Norvig text
         # 1. determine what actions to add and create those PgNode_a objects
         self.a_levels.append(set())#initiate new level
         for action in self.all_actions: #iterate over all possible actions
@@ -317,11 +316,6 @@ class PlanningGraph():
                         #connect nodes
                         a_node.parents.add(s_node)
                         s_node.children.add(a_node)
-        # for example, the A0 level will iterate through all possible actions for the problem and add a PgNode_a to a_levels[0]
-        #   set iff all prerequisite literals for the action hold in S0.  This can be accomplished by testing
-        #   to see if a proposed PgNode_a has prenodes that are a subset of the previous S level.  Once an
-        #   action node is added, it MUST be connected to the S node instances in the appropriate s_level set.
-
     def add_literal_level(self, level):
         """ add an S (literal) level to the Planning Graph
 
@@ -331,7 +325,6 @@ class PlanningGraph():
         :return:
             adds S nodes to the current level in self.s_levels[level]
         """
-        # TODO add literal S level to the planning graph as described in the Russell-Norvig text
         self.s_levels.append(set())#initiate new level
         # 1. determine what literals to add
         #iterate over prev action level
@@ -345,12 +338,6 @@ class PlanningGraph():
                 a_node.children.add( s_node )
                 #add parents to s_node
                 s_node.parents.add( a_node )
-        # for example, every A node in the previous level has a list of S nodes in effnodes that represent the effect
-        #   produced by the action.  These literals will all be part of the new S level.  Since we are working with sets, they
-        #   may be "added" to the set without fear of duplication.  However, it is important to then correctly create and connect
-        #   all of the new S nodes as children of all the A nodes that could produce them, and likewise add the A nodes to the
-        #   parent sets of the S nodes
-
     def update_a_mutex(self, nodeset):
         """ Determine and update sibling mutual exclusion for A-level nodes
 
@@ -406,12 +393,8 @@ class PlanningGraph():
         :param node_a2: PgNode_a
         :return: bool
         """
-        # if effect of one action is the negation of the effect of other action:
-        if node_a1.action.effect_add == node_a2.action.effect_rem: #is negation of node_a2.action.effect_rem
-            return True
-        if node_a1.action.effect_rem == node_a2.action.effect_add: #is negation of node_a2.action.effect_rem
-            return True
-        return False
+        # if effect of one action is the negation of the effect of other action
+        return any(eff for eff in node_a1.action.effect_add if eff in node_a2.action.effect_rem) or any( eff for eff in node_a1.action.effect_rem if eff in node_a2.action.effect_add )
 
     def interference_mutex(self, node_a1: PgNode_a, node_a2: PgNode_a) -> bool:
         """
@@ -428,14 +411,7 @@ class PlanningGraph():
         :return: bool
         """
         #if there are no preconditons
-        if not node_a1.prenodes and not node_a2.prenodes:
-            return False
-        #two conditions below check if a condition in one node is the negation of a precondition of the other node
-        if node_a1.action.precond_neg == node_a2.action.effect_add or node_a1.action.precond_pos == node_a2.action.effect_rem:
-            return True
-        if node_a2.action.precond_neg == node_a1.action.effect_add or node_a2.action.precond_pos == node_a1.action.effect_rem:
-            return True
-        return False
+        return (set(node_a1.action.precond_neg) & set(node_a2.action.effect_add)) or (set(node_a1.action.precond_pos) & set(node_a2.action.effect_rem)) or ( set(node_a2.action.precond_neg) & set( node_a1.action.effect_add) ) or (set(node_a2.action.precond_pos) & set(node_a1.action.effect_rem))  
 
     def competing_needs_mutex(self, node_a1: PgNode_a, node_a2: PgNode_a) -> bool:
         """
@@ -447,15 +423,11 @@ class PlanningGraph():
         :param node_a2: PgNode_a
         :return: bool
         """
+        #iterate over preconditions
         for p1 in node_a1.parents:
             for p2 in node_a2.parents:
                 if p1.is_mutex(p2):
                     return True
-        #above passes tests but if udacity-pa doesn't pass then cf. below
-        #if node_a1.action.precond_pos == node_a2.action.precond_neg:
-        #    return True
-        #if node_a1.action.precond_neg == node_a2.action.precond_pos:
-        #    return True
         return False
         
     def update_s_mutex(self, nodeset: set):
